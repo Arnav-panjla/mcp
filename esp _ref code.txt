@@ -1,0 +1,73 @@
+#this is a reference code for esp to control the servos
+#Note - html connection will be done after this code sucessfully compiles/runs
+
+from machine import Pin, ADC
+from time import sleep
+import machine
+from machine import PWM
+import math
+
+PIN_H = machine.Pin(13)
+servoH = machine.PWM(PIN_H,freq=50)
+PIN_V = machine.Pin(12)
+servoV = machine.PWM(PIN_V,freq=50)
+
+#39---BL ---- L1
+#34---TR ---- L2
+#35---TL ---- L3
+#32---BR ---- L4
+#33---cellul solar
+
+Cellul_solar = ADC(Pin(33))
+LDR_BR = ADC(Pin(32))
+LDR_TR = ADC(Pin(34))
+LDR_TL = ADC(Pin(35))
+LDR_BL = ADC(Pin(39))
+Tolerance = 40
+position_V = 100
+position_H = 100
+position_V_MIN = 83
+position_H_MIN = 10
+position_V_MAX = 130
+position_H_MAX = 130
+servoV.duty(position_V)
+servoH.duty(position_H)
+sleep(3)
+
+
+Cellul_solar.atten(ADC.ATTN_11DB)       #Full range: 3.3v
+LDR_BR.atten(ADC.ATTN_11DB)
+LDR_TR.atten(ADC.ATTN_11DB)
+LDR_TL.atten(ADC.ATTN_11DB)
+LDR_BL.atten(ADC.ATTN_11DB)
+
+while True:
+    Cellul_solar_value = Cellul_solar.read()
+    LDR_BR_value = LDR_BR.read()
+    LDR_BL_value = LDR_BL.read()
+    LDR_TR_value = LDR_TR.read()
+    LDR_TL_value = LDR_TL.read()
+    Top_Light = math.fabs(LDR_TR_value-LDR_TL_value)
+    Bottom_Light = math.fabs(LDR_BR_value-LDR_BL_value)
+    Right_Light = math.fabs(LDR_TR_value-LDR_BR_value)
+    Lifet_Light = math.fabs(LDR_TL_value-LDR_BL_value)
+    V_Mvt = Top_Light - Bottom_Light
+    H_Mvt = Right_Light - Lifet_Light
+    #print("V movt : {}, H movt : {}".format(math.fabs(V_Mvt),math.fabs(H_Mvt)))
+    if(math.fabs(V_Mvt) > Tolerance):
+        if(V_Mvt>0 and position_V>position_V_MIN ):
+            print(position_V)
+            position_V=position_V-1
+            servoV.duty(position_V)
+        if(V_Mvt>0 and position_V<position_V_MAX) :
+            position_V=position_V+1
+            servoV.duty(position_V)
+    if( math.fabs(H_Mvt) > Tolerance):
+        if(H_Mvt>0 and position_H>position_H_MIN):
+            #print(position_H)
+            position_H=position_H-2
+            servoH.duty(position_H)
+        if(V_Mvt>0 and position_H<position_H_MAX) :
+            position_H=position_H+2
+            servoH.duty(position_H)
+    sleep(0.1)

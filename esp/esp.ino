@@ -6,13 +6,12 @@ Servo myservo;  // create servo object to control a servo
 
 int pos = 0;    // variable to store the servo position
 // Recommended PWM GPIO pins on the ESP32 include 2,4,12-19,21-23,25-27,32-33 
-int servoPin = 27;
+int AservoPin = 27;
+int BservoPin = 26;
 
 void setup() {
-  myservo.attach(servoPin);   // attaches the servo on pin 18 to the servo object
-                              // using default min/max of 1000us and 2000us
-                              // different servos may require different min/max settings
-                              // for an accurate 0 to 180 sweep
+  myservo.attach(AservoPin);
+  myservo.attach(AservoPin);   
 }
 
 void loop() {
