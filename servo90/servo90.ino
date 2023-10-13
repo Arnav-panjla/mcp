@@ -3,7 +3,8 @@
 Servo myservo[2];  // create servo object to control a servo (probably an array to control 2 servos) 
                 // 16 servo objects can be created on the ESP32
 
-int pos = 90;    // variable to store the inital servo position
+int pos_a = 90;    // variable to store the inital Aservo position
+int pos_b = 90;    // variable to store the inital Bservo position
 // Recommended PWM GPIO pins on the ESP32 include 2,4,12-19,21-23,25-27,32-33 
 int AservoPin = 27;
 int BservoPin = 26;
@@ -30,8 +31,8 @@ void setup() {
     myservo[2].attach(BservoPin);   
 
     //setting position of all servoes to 90 initially 
-    myservo[1].write(pos);
-    myservo[2].write(pos);
+    myservo[1].write(pos_a);
+    myservo[2].write(pos_b);
 
     delay(1)
 }
@@ -49,6 +50,13 @@ void loop() {
     BRRval = BRRread*BRRtf;
     BLRval = BLRread*BLRtf;
 
-    If ()
+    If ( TRRval > TLRval ) or ( BRRval > BLRval ){
+        pos_a=pos_a+1;
+        myservo[1].write(pos_a);
+    }
+    If ( BRRval > BLRval ){
+        pos_a=pos_a+1;
+        myservo[2].write(pos_a);
+    }
   
 }
