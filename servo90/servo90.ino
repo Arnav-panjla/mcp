@@ -54,9 +54,19 @@ void loop() {
         pos_a=pos_a+1;
         myservo[1].write(pos_a);
     }
-    If ( BRRval > BLRval ){
+    Elif ( TRRval < TLRval ) or ( BRRval < BLRval ){
+        pos_a=pos_a-1;
+        myservo[1].write(pos_a);
+    }
+    Elif ( BRRval > TRRval ) or ( BLRval > TLRval ){
         pos_a=pos_a+1;
         myservo[2].write(pos_a);
     }
+    Elif ( BRRval < TRRval ) or ( BLRval < TLRval ){
+        pos_a=pos_a-1;
+        myservo[2].write(pos_a);
+    }
+
+    Else{}
   
 }
