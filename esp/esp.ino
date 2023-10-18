@@ -19,6 +19,11 @@ int TLRtf = 1;
 int BRRtf = 1;
 int BLRtf = 1;
 
+int Vval; // variable for actual voltage reading from solar output 
+int Pval; //variable that contains power value in Watt
+int Res = 1000 ; //resistor value (3 identical will be connected) (1k??)
+int Readval; //value of analog read from voltage divider (solar output)
+
 void setup() {
     Serial.begin(115200); //begin serial monitor 
     //initialising all input output pins
@@ -36,7 +41,7 @@ void setup() {
     myservo[1].write(pos_a);
     myservo[2].write(pos_b);
 
-    delay(1)
+    delay(10)
 }
 
 void loop() {
@@ -45,15 +50,12 @@ void loop() {
     TLRread = analogRead(TLR);
     BRRread = analogRead(BRR);
     TLRread = analogRead(BLR);
-    Pval = analogRead(read_val); //value range from 0-4092
 
     //calibrating read values
     TRRval = TRRread*TRRtf;
     TLRval = TLRread*TLRtf;
     BRRval = BRRread*BRRtf;
     BLRval = BLRread*BLRtf;
-
-
 
     If ( TRRval > TLRval ) or ( BRRval > BLRval ){
         pos_a=pos_a+1;
@@ -72,5 +74,14 @@ void loop() {
         myservo[2].write(pos_a);
     }
     Else{}
+
+    ///reads value form solar output
+    Readval = analogRead(read_val); //value range from 0-4092
+    Vval = Readval*(9.9/4092);
+    Pval = (Vval*Vval)/Res;
+
+
+    ///website code to display solar output
+    
   
 }

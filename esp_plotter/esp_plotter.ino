@@ -1,79 +1,38 @@
-/*********
-  Rui Santos
-  Complete project details at https://RandomNerdTutorials.com/esp32-bme680-sensor-arduino/
-  
-  Permission is hereby granted, free of charge, to any person obtaining a copy
-  of this software and associated documentation files.
-  
-  The above copyright notice and this permission notice shall be included in all
-  copies or substantial portions of the Software.
-*********/
-
-#include <Wire.h>
-#include <SPI.h>
-#include <Adafruit_Sensor.h>
-#include "Adafruit_BME680.h"
+#include <ESP32Servo.h>
 #include <WiFi.h>
 #include "ESPAsyncWebServer.h"
 
-// Replace with your network credentials
-const char* ssid = "REPLACE_WITH_YOUR_SSID";
-const char* password = "REPLACE_WITH_YOUR_PASSWORD";
+Servo myservo[2];  // create servo object to control a servo (probably an array to control 2 servos) 
+                // 16 servo objects can be created on the ESP32
 
-//Uncomment if using SPI
-/*#define BME_SCK 18
-#define BME_MISO 19
-#define BME_MOSI 23
-#define BME_CS 5*/
+int pos_a = 90;    // variable to store the inital Aservo position
+int pos_b = 90;    // variable to store the inital Bservo position
+// Recommended PWM GPIO pins on the ESP32 include 2,4,12-19,21-23,25-27,32-33 
+int read_val = ;
+int AservoPin = 27;
+int BservoPin = 26;
+int TRR = ;
+int TLR = ;
+int BRR = ;
+int BLR = ;
+//tolerance factor for each photoresistor (Default value is 1)
+int TRRtf = 1;
+int TLRtf = 1;
+int BRRtf = 1;
+int BLRtf = 1;
 
-Adafruit_BME680 bme; // I2C
-//Adafruit_BME680 bme(BME_CS); // hardware SPI
-//Adafruit_BME680 bme(BME_CS, BME_MOSI, BME_MISO, BME_SCK);
+int Vval; // variable for actual voltage reading from solar output 
+int Pval; //variable that contains power value in Watt
+int Res = 1000 ; //resistor value (3 identical will be connected) (1k??)
+int Readval; //value of analog read from voltage divider (solar output)
 
-float temperature;
-float humidity;
-float pressure;
-float gasResistance;
 
+///////////////////////////////////////website code/////////////////////////////////
 AsyncWebServer server(80);
 AsyncEventSource events("/events");
 
 unsigned long lastTime = 0;  
 unsigned long timerDelay = 30000;  // send readings timer
-
-void getBME680Readings(){
-  // Tell BME680 to begin measurement.
-  unsigned long endTime = bme.beginReading();
-  if (endTime == 0) {
-    Serial.println(F("Failed to begin reading :("));
-    return;
-  }
-  if (!bme.endReading()) {
-    Serial.println(F("Failed to complete reading :("));
-    return;
-  }
-  temperature = bme.temperature;
-  pressure = bme.pressure / 100.0;
-  humidity = bme.humidity;
-  gasResistance = bme.gas_resistance / 1000.0;
-}
-
-String processor(const String& var){
-  getBME680Readings();
-  //Serial.println(var);
-  if(var == "TEMPERATURE"){
-    return String(temperature);
-  }
-  else if(var == "HUMIDITY"){
-    return String(humidity);
-  }
-  else if(var == "PRESSURE"){
-    return String(pressure);
-  }
- else if(var == "GAS"){
-    return String(gasResistance);
-  }
-}
 
 const char index_html[] PROGMEM = R"rawliteral(
 <!DOCTYPE HTML><html>
@@ -158,68 +117,82 @@ if (!!window.EventSource) {
 </body>
 </html>)rawliteral";
 
+////////////////////////////////////////////////////////////////////////////////////
+
 void setup() {
-  Serial.begin(115200);
+    Serial.begin(115200); //begin serial monitor 
+    //initialising all input output pins
+    pinMode(read_val,INPUT);
+    pinMode(AservoPin,OUTPUT);
+    pinMode(BservoPin,OUTPUT);
+    pinMode(TRR,INPUT);
+    pinMode(TLR,INPUT);
+    pinMode(BRR,INPUT);
+    pinMode(BLR,INPUT);
+    myservo[1].attach(AservoPin);
+    myservo[2].attach(BservoPin);   
 
-  // Set the device as a Station and Soft Access Point simultaneously
-  WiFi.mode(WIFI_AP_STA);
+    //setting position of all servoes to 90 initially 
+    myservo[1].write(pos_a);
+    myservo[2].write(pos_b);
+
+    //////////////////////////////////website code ////////////////////////////////////////////////////
+      // Set the device as a Station and Soft Access Point simultaneously
+    WiFi.mode(WIFI_AP_STA);
   
-  // Set device as a Wi-Fi Station
-  WiFi.begin(ssid, password);
-  while (WiFi.status() != WL_CONNECTED) {
-    delay(1000);
-    Serial.println("Setting as a Wi-Fi Station..");
-  }
-  Serial.print("Station IP Address: ");
-  Serial.println(WiFi.localIP());
-  Serial.println();
-
-  // Init BME680 sensor
-  if (!bme.begin()) {
-    Serial.println(F("Could not find a valid BME680 sensor, check wiring!"));
-    while (1);
-  }
-  // Set up oversampling and filter initialization
-  bme.setTemperatureOversampling(BME680_OS_8X);
-  bme.setHumidityOversampling(BME680_OS_2X);
-  bme.setPressureOversampling(BME680_OS_4X);
-  bme.setIIRFilterSize(BME680_FILTER_SIZE_3);
-  bme.setGasHeater(320, 150); // 320*C for 150 ms
-
-  // Handle Web Server
-  server.on("/", HTTP_GET, [](AsyncWebServerRequest *request){
-    request->send_P(200, "text/html", index_html, processor);
-  });
-
-  // Handle Web Server Events
-  events.onConnect([](AsyncEventSourceClient *client){
-    if(client->lastId()){
-      Serial.printf("Client reconnected! Last message ID that it got is: %u\n", client->lastId());
+    // Set device as a Wi-Fi Station
+    WiFi.begin(ssid, password);
+    while (WiFi.status() != WL_CONNECTED) {
+      delay(1000);
+      Serial.println("Setting as a Wi-Fi Station..");
     }
-    // send event with message "hello!", id current millis
-    // and set reconnect delay to 1 second
-    client->send("hello!", NULL, millis(), 10000);
-  });
-  server.addHandler(&events);
-  server.begin();
+    Serial.print("Station IP Address: ");
+    Serial.println(WiFi.localIP());
+    Serial.println();
+    //////////////////////////////////////////////////////////////////////////////////////////
+
+
+    delay(10)
 }
 
 void loop() {
-  if ((millis() - lastTime) > timerDelay) {
-    getBME680Readings();
-    Serial.printf("Temperature = %.2f ºC \n", temperature);
-    Serial.printf("Humidity = %.2f % \n", humidity);
-    Serial.printf("Pressure = %.2f hPa \n", pressure);
-    Serial.printf("Gas Resistance = %.2f KOhm \n", gasResistance);
-    Serial.println();
+    //reading photoresistor values 
+    TRRread = analogRead(TRR);
+    TLRread = analogRead(TLR);
+    BRRread = analogRead(BRR);
+    TLRread = analogRead(BLR);
 
-    // Send Events to the Web Server with the Sensor Readings
-    events.send("ping",NULL,millis());
-    events.send(String(temperature).c_str(),"temperature",millis());
-    events.send(String(humidity).c_str(),"humidity",millis());
-    events.send(String(pressure).c_str(),"pressure",millis());
-    events.send(String(gasResistance).c_str(),"gas",millis());
+    //calibrating read values
+    TRRval = TRRread*TRRtf;
+    TLRval = TLRread*TLRtf;
+    BRRval = BRRread*BRRtf;
+    BLRval = BLRread*BLRtf;
+
+    If ( TRRval > TLRval ) or ( BRRval > BLRval ){
+        pos_a=pos_a+1;
+        myservo[1].write(pos_a);
+    }
+    Elif ( TRRval < TLRval ) or ( BRRval < BLRval ){
+        pos_a=pos_a-1;
+        myservo[1].write(pos_a);
+    }
+    Elif ( BRRval > TRRval ) or ( BLRval > TLRval ){
+        pos_a=pos_a+1;
+        myservo[2].write(pos_a);
+    }
+    Elif ( BRRval < TRRval ) or ( BLRval < TLRval ){
+        pos_a=pos_a-1;
+        myservo[2].write(pos_a);
+    }
+    Else{}
+
+    ///reads value form solar output
+    Readval = analogRead(read_val); //value range from 0-4092
+    Vval = Readval*(9.9/4092);
+    Pval = (Vval*Vval)/Res;
+
+
+    ///website code to display solar output
     
-    lastTime = millis();
-  }
+  
 }
