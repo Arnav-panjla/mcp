@@ -2,6 +2,12 @@
 #include <WiFi.h>
 #include "ESPAsyncWebServer.h"
 
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+// Replace with your network credentials
+const char* ssid = "REPLACE_WITH_YOUR_SSID";
+const char* password = "REPLACE_WITH_YOUR_PASSWORD";
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
 Servo myservo[2];  // create servo object to control a servo (probably an array to control 2 servos) 
                 // 16 servo objects can be created on the ESP32
 
@@ -65,15 +71,6 @@ const char index_html[] PROGMEM = R"rawliteral(
       <div class="card temperature">
         <h4><i class="fas fa-thermometer-half"></i> TEMPERATURE</h4><p><span class="reading"><span id="temp">%TEMPERATURE%</span> &deg;C</span></p>
       </div>
-      <div class="card humidity">
-        <h4><i class="fas fa-tint"></i> HUMIDITY</h4><p><span class="reading"><span id="hum">%HUMIDITY%</span> &percnt;</span></p>
-      </div>
-      <div class="card pressure">
-        <h4><i class="fas fa-angle-double-down"></i> PRESSURE</h4><p><span class="reading"><span id="pres">%PRESSURE%</span> hPa</span></p>
-      </div>
-      <div class="card gas">
-        <h4><i class="fas fa-wind"></i> GAS</h4><p><span class="reading"><span id="gas">%GAS%</span> K&ohm;</span></p>
-      </div>
     </div>
   </div>
 <script>
@@ -96,21 +93,6 @@ if (!!window.EventSource) {
  source.addEventListener('temperature', function(e) {
   console.log("temperature", e.data);
   document.getElementById("temp").innerHTML = e.data;
- }, false);
- 
- source.addEventListener('humidity', function(e) {
-  console.log("humidity", e.data);
-  document.getElementById("hum").innerHTML = e.data;
- }, false);
- 
- source.addEventListener('pressure', function(e) {
-  console.log("pressure", e.data);
-  document.getElementById("pres").innerHTML = e.data;
- }, false);
- 
- source.addEventListener('gas', function(e) {
-  console.log("gas", e.data);
-  document.getElementById("gas").innerHTML = e.data;
  }, false);
 }
 </script>
@@ -149,6 +131,24 @@ void setup() {
     Serial.print("Station IP Address: ");
     Serial.println(WiFi.localIP());
     Serial.println();
+
+    // Handle Web Server
+  server.on("/", HTTP_GET, [](AsyncWebServerRequest *request){
+    request->send_P(200, "text/html", index_html, processor);
+  });
+
+  // Handle Web Server Events
+  events.onConnect([](AsyncEventSourceClient *client){
+    if(client->lastId()){
+      Serial.printf("Client reconnected! Last message ID that it got is: %u\n", client->lastId());
+    }
+    // send event with message "hello!", id current millis
+    // and set reconnect delay to 1 second
+    client->send("hello!", NULL, millis(), 10000);
+  });
+  server.addHandler(&events);
+  server.begin();
+
     //////////////////////////////////////////////////////////////////////////////////////////
 
 
@@ -193,6 +193,18 @@ void loop() {
 
 
     ///website code to display solar output
+    //////////////////////////////////////////////website code/////////////////////////////////////////////
+    if ((millis() - lastTime) > timerDelay) {
+      Serial.printf("Temperature = %.2f ºC \n", temperature);
+      Serial.println();
+
+    // Send Events to the Web Server with the Sensor Readings
+      events.send("ping",NULL,millis());
+      events.send(String(temperature).c_str(),"temperature",millis());
+    
+      lastTime = millis();
+    }
+    //////////////////////////////////////////////////////////////////////////////////////////////////////
     
   
 }
