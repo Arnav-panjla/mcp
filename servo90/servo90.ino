@@ -10,10 +10,12 @@ int BservoPin = 26;
 
 void setup() {
   myservo[1].attach(AservoPin);
-  myservo[2].attach(AservoPin);   
+  myservo[2].attach(BservoPin);   
 }
 
 void loop() {
     //setting position of all servoes to 90
     myservo[1].write(90);
     myservo[2].write(90);
+
+}

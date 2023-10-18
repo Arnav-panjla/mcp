@@ -6,6 +6,7 @@ Servo myservo[2];  // create servo object to control a servo (probably an array 
 int pos_a = 90;    // variable to store the inital Aservo position
 int pos_b = 90;    // variable to store the inital Bservo position
 // Recommended PWM GPIO pins on the ESP32 include 2,4,12-19,21-23,25-27,32-33 
+int read_val = ;
 int AservoPin = 27;
 int BservoPin = 26;
 int TRR = ;
@@ -21,6 +22,7 @@ int BLRtf = 1;
 void setup() {
     Serial.begin(115200); //begin serial monitor 
     //initialising all input output pins
+    pinMode(read_val,INPUT);
     pinMode(AservoPin,OUTPUT);
     pinMode(BservoPin,OUTPUT);
     pinMode(TRR,INPUT);
@@ -43,12 +45,15 @@ void loop() {
     TLRread = analogRead(TLR);
     BRRread = analogRead(BRR);
     TLRread = analogRead(BLR);
+    Pval = analogRead(read_val); //value range from 0-4092
 
     //calibrating read values
     TRRval = TRRread*TRRtf;
     TLRval = TLRread*TLRtf;
     BRRval = BRRread*BRRtf;
     BLRval = BLRread*BLRtf;
+
+
 
     If ( TRRval > TLRval ) or ( BRRval > BLRval ){
         pos_a=pos_a+1;
@@ -66,7 +71,6 @@ void loop() {
         pos_a=pos_a-1;
         myservo[2].write(pos_a);
     }
-
     Else{}
   
 }
