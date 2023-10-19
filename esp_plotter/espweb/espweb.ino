@@ -15,12 +15,12 @@ int pos_a = 90;    // variable to store the inital Aservo position
 int pos_b = 90;    // variable to store the inital Bservo position
 // Recommended PWM GPIO pins on the ESP32 include 2,4,12-19,21-23,25-27,32-33 
 int read_val = 34;
-int AservoPin = 27;
-int BservoPin = 26;
-int TRR = 21;
-int TLR = 22;
-int BRR = 23;
-int BLR = 25;
+int AservoPin = 12;
+int BservoPin = 13;
+int TRR = 16;
+int TLR = 4;
+int BRR = 2;
+int BLR = 14;
 //tolerance factor for each photoresistor (Default value is 1)
 int TRRtf = 1;
 int TLRtf = 1;
@@ -50,7 +50,7 @@ AsyncWebServer server(80);
 AsyncEventSource events("/events");
 
 unsigned long lastTime = 0;  
-unsigned long timerDelay = 3000;  // send readings timer
+unsigned long timerDelay = 250;  // send readings timer
 
 const char index_html[] PROGMEM = R"rawliteral(
 <!DOCTYPE HTML><html>
@@ -76,12 +76,12 @@ const char index_html[] PROGMEM = R"rawliteral(
 </head>
 <body>
   <div class="topnav">
-    <h3>WEB SERVER</h3>
+    <h3>AUOTOMATED SUN TRACKING SOLAR PANEL</h3>
   </div>
   <div class="content">
     <div class="cards">
       <div class="card temperature">
-        <h4><i class="fas fa-thermometer-half"></i> TEMPERATURE</h4><p><span class="reading"><span id="temp">%TEMPERATURE%</span> &deg;C</span></p>
+        <h4><i style='font-size:24px' class='fas'>&#xf5ba;</i> POWER</h4><p><span class="reading"><span id="temp">%TEMPERATURE%</span> W</span></p>
       </div>
     </div>
   </div>
@@ -211,14 +211,14 @@ void loop() {
     Readval = analogRead(read_val); //value range from 0-4092
     Vval = Readval*(9.9/4092);
     Pval = (Vval*Vval)/Res;
-    temperature = Pval;
+    temperature = Pval*10;
     Serial.println(temperature);
     Serial.println(Vval);
     delay(100);
     ///website code to display solar output
     //////////////////////////////////////////////website code/////////////////////////////////////////////
     if ((millis() - lastTime) > timerDelay) {
-      Serial.printf("Temperature = %.2f ºC \n", temperature);
+      Serial.printf("Temperature = %.4f ºC \n", temperature);
       Serial.println();
 
     // Send Events to the Web Server with the Sensor Readings
