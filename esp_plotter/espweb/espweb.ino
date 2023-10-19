@@ -4,8 +4,8 @@
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 // Replace with your network credentials
-const char* ssid = "REPLACE_WITH_YOUR_SSID";
-const char* password = "REPLACE_WITH_YOUR_PASSWORD";
+const char* ssid = "moto g42";
+const char* password = "12345678";
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 Servo myservo[2];  // create servo object to control a servo (probably an array to control 2 servos) 
@@ -14,23 +14,35 @@ Servo myservo[2];  // create servo object to control a servo (probably an array 
 int pos_a = 90;    // variable to store the inital Aservo position
 int pos_b = 90;    // variable to store the inital Bservo position
 // Recommended PWM GPIO pins on the ESP32 include 2,4,12-19,21-23,25-27,32-33 
-int read_val = ;
+int read_val = 34;
 int AservoPin = 27;
 int BservoPin = 26;
-int TRR = ;
-int TLR = ;
-int BRR = ;
-int BLR = ;
+int TRR = 21;
+int TLR = 22;
+int BRR = 23;
+int BLR = 25;
 //tolerance factor for each photoresistor (Default value is 1)
 int TRRtf = 1;
 int TLRtf = 1;
 int BRRtf = 1;
 int BLRtf = 1;
+//variables declaration
+int TRRread;
+int TLRread;
+int BRRread;
+int BLRread;
 
-int Vval; // variable for actual voltage reading from solar output 
-int Pval; //variable that contains power value in Watt
+int TRRval;
+int TLRval;
+int BRRval;
+int BLRval;
+//
+
+float Vval; // variable for actual voltage reading from solar output 
+float Pval; //variable that contains power value in Watt
 int Res = 1000 ; //resistor value (3 identical will be connected) (1k??)
 int Readval; //value of analog read from voltage divider (solar output)
+float temperature;
 
 
 ///////////////////////////////////////website code/////////////////////////////////
@@ -38,12 +50,12 @@ AsyncWebServer server(80);
 AsyncEventSource events("/events");
 
 unsigned long lastTime = 0;  
-unsigned long timerDelay = 30000;  // send readings timer
+unsigned long timerDelay = 3000;  // send readings timer
 
 const char index_html[] PROGMEM = R"rawliteral(
 <!DOCTYPE HTML><html>
 <head>
-  <title>BME680 Web Server</title>
+  <title>Web Server</title>
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <link rel="stylesheet" href="https://use.fontawesome.com/releases/v5.7.2/css/all.css" integrity="sha384-fnmOCqbTlWIlj8LyTjo7mOUStjsKC4pOpQbqyi7RrhN7udi9RwhKkMHpvLbHG9Sr" crossorigin="anonymous">
   <link rel="icon" href="data:,">
@@ -64,7 +76,7 @@ const char index_html[] PROGMEM = R"rawliteral(
 </head>
 <body>
   <div class="topnav">
-    <h3>BME680 WEB SERVER</h3>
+    <h3>WEB SERVER</h3>
   </div>
   <div class="content">
     <div class="cards">
@@ -98,6 +110,13 @@ if (!!window.EventSource) {
 </script>
 </body>
 </html>)rawliteral";
+
+String processor(const String& var){
+  //Serial.println(var);
+  if(var == "TEMPERATURE"){
+    return String(temperature);
+  }
+}
 
 ////////////////////////////////////////////////////////////////////////////////////
 
@@ -152,7 +171,7 @@ void setup() {
     //////////////////////////////////////////////////////////////////////////////////////////
 
 
-    delay(10)
+    delay(10);
 }
 
 void loop() {
@@ -168,30 +187,34 @@ void loop() {
     BRRval = BRRread*BRRtf;
     BLRval = BLRread*BLRtf;
 
-    If ( TRRval > TLRval ) or ( BRRval > BLRval ){
+    if (( TRRval > TLRval ) or ( BRRval > BLRval )){
         pos_a=pos_a+1;
         myservo[1].write(pos_a);
     }
-    Elif ( TRRval < TLRval ) or ( BRRval < BLRval ){
+    if (( TRRval < TLRval ) or ( BRRval < BLRval )){
         pos_a=pos_a-1;
         myservo[1].write(pos_a);
     }
-    Elif ( BRRval > TRRval ) or ( BLRval > TLRval ){
+    if (( BRRval > TRRval ) or ( BLRval > TLRval )){
         pos_a=pos_a+1;
         myservo[2].write(pos_a);
     }
-    Elif ( BRRval < TRRval ) or ( BLRval < TLRval ){
+    if (( BRRval < TRRval ) or ( BLRval < TLRval )){
         pos_a=pos_a-1;
         myservo[2].write(pos_a);
     }
-    Else{}
+    else{
+      
+    }
 
     ///reads value form solar output
     Readval = analogRead(read_val); //value range from 0-4092
     Vval = Readval*(9.9/4092);
     Pval = (Vval*Vval)/Res;
-
-
+    temperature = Pval;
+    Serial.println(temperature);
+    Serial.println(Vval);
+    delay(100);
     ///website code to display solar output
     //////////////////////////////////////////////website code/////////////////////////////////////////////
     if ((millis() - lastTime) > timerDelay) {
