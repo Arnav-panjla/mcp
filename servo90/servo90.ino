@@ -14,8 +14,9 @@ void setup() {
 }
 
 void loop() {
-    //setting position of all servoes to 90
-    myservo[1].write(90);
-    myservo[2].write(90);
+  //setting position of all servoes to 90
+  myservo[1].write(90);
+  myservo[2].write(90);
+    
 
 }

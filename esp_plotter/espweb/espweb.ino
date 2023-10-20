@@ -17,9 +17,9 @@ int pos_b = 90;    // variable to store the inital Bservo position
 int read_val = 34;
 int AservoPin = 12;
 int BservoPin = 13;
-int TRR = 16;
-int TLR = 4;
-int BRR = 2;
+int TRR = 4;
+int TLR = 2;
+int BRR = 16;
 int BLR = 14;
 //tolerance factor for each photoresistor (Default value is 1)
 int TRRtf = 1;
