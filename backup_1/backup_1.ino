@@ -49,20 +49,35 @@ float Vval; // variable for actual voltage reading from solar output
 float Pval; //variable that contains power value in Watt
 int Res = 1000 ; //resistor value (3 identical will be connected) (1k??)
 int Readval; //value of analog read from voltage divider (solar output)
+
+
 float temperature;
+float humidity;
 
-
-///////////////////////////////////////website code/////////////////////////////////
 AsyncWebServer server(80);
 AsyncEventSource events("/events");
 
 unsigned long lastTime = 0;  
-unsigned long timerDelay = 500;  // send readings timer
+unsigned long timerDelay = 250;  // send readings timer
+
+
+String processor(const String& var){
+    temperature=Pval;
+    humidity = Eval;
+  //Serial.println(var);
+  if(var == "TEMPERATURE"){
+    return String(temperature);
+  }
+  else if(var == "HUMIDITY"){
+    return String(humidity);
+  }
+  }
+}
 
 const char index_html[] PROGMEM = R"rawliteral(
 <!DOCTYPE HTML><html>
 <head>
-  <title>Web Server</title>
+  <title>SUN TRACKING SOLAR</title>
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <link rel="stylesheet" href="https://use.fontawesome.com/releases/v5.7.2/css/all.css" integrity="sha384-fnmOCqbTlWIlj8LyTjo7mOUStjsKC4pOpQbqyi7RrhN7udi9RwhKkMHpvLbHG9Sr" crossorigin="anonymous">
   <link rel="icon" href="data:,">
@@ -83,12 +98,21 @@ const char index_html[] PROGMEM = R"rawliteral(
 </head>
 <body>
   <div class="topnav">
-    <h3>AUOTOMATED SUN TRACKING SOLAR PANEL</h3>
+    <h3>BME680 WEB SERVER</h3>
   </div>
   <div class="content">
     <div class="cards">
       <div class="card temperature">
-        <h4><i style='font-size:24px' class='fas'>&#xf5ba;</i> POWER</h4><p><span class="reading"><span id="temp">%POWER%</span> mW</span></p>
+        <h4><i class="fas fa-thermometer-half"></i> TEMPERATURE</h4><p><span class="reading"><span id="temp">%TEMPERATURE%</span> &deg;C</span></p>
+      </div>
+      <div class="card humidity">
+        <h4><i class="fas fa-tint"></i> HUMIDITY</h4><p><span class="reading"><span id="hum">%HUMIDITY%</span> &percnt;</span></p>
+      </div>
+      <div class="card pressure">
+        <h4><i class="fas fa-angle-double-down"></i> PRESSURE</h4><p><span class="reading"><span id="pres">%PRESSURE%</span> hPa</span></p>
+      </div>
+      <div class="card gas">
+        <h4><i class="fas fa-wind"></i> GAS</h4><p><span class="reading"><span id="gas">%GAS%</span> K&ohm;</span></p>
       </div>
     </div>
   </div>
@@ -113,62 +137,60 @@ if (!!window.EventSource) {
   console.log("temperature", e.data);
   document.getElementById("temp").innerHTML = e.data;
  }, false);
+ 
+ source.addEventListener('humidity', function(e) {
+  console.log("humidity", e.data);
+  document.getElementById("hum").innerHTML = e.data;
+ }, false);
 }
 </script>
 </body>
 </html>)rawliteral";
 
-String processor(const String& var){
-  //Serial.println(var);
-  if(var == "TEMPERATURE"){
-    return String(temperature);
-  }
-}
-
-////////////////////////////////////////////////////////////////////////////////////
-
 void setup() {
-    Serial.begin(115200); //begin serial monitor 
-    //initialising all input output pins
-    pinMode(read_val,INPUT);
-    pinMode(servoApin,OUTPUT);
-    pinMode(servoBpin,OUTPUT);
-    pinMode(TRR,INPUT);
-    pinMode(TLR,INPUT);
-    pinMode(BRR,INPUT);
-    pinMode(BLR,INPUT);
-    pinMode(red,OUTPUT);
-    pinMode(green,OUTPUT);
-    servoA.attach(servoApin);
-    servoB.attach(servoBpin);   
+  Serial.begin(115200); //begin serial monitor 
+  //initialising all input output pins
+  pinMode(read_val,INPUT);
+  pinMode(servoApin,OUTPUT);
+  pinMode(servoBpin,OUTPUT);
+  pinMode(TRR,INPUT);
+  pinMode(TLR,INPUT);
+  pinMode(BRR,INPUT);
+  pinMode(BLR,INPUT);
+  pinMode(red,OUTPUT);
+  pinMode(green,OUTPUT);
+  servoA.attach(servoApin);
+  servoB.attach(servoBpin);   
 
-    //setting position of all servoes to 90 initially 
-    servoA.write(pos_a);
-    servoB.write(pos_b);
+  //setting position of all servoes to 90 initially 
+  servoA.write(pos_a);
+  servoB.write(pos_b);
+  //turing all led off 
+  digitalWrite(red,LOW);
+  digitalWrite(green,LOW);
 
-    //turing all led off 
-    digitalWrite(red,LOW);
-    digitalWrite(green,LOW);
+  Serial.begin(115200);
 
-    //////////////////////////////////website code ////////////////////////////////////////////////////
-      // Set the device as a Station and Soft Access Point simultaneously
-    WiFi.mode(WIFI_AP_STA);
+  // Set the device as a Station and Soft Access Point simultaneously
+  WiFi.mode(WIFI_AP_STA);
   
-    // Set device as a Wi-Fi Station
-    WiFi.begin(ssid, password);
-    while (WiFi.status() != WL_CONNECTED) {
-      digitalWrite(red,HIGH);//turning on red led
-      delay(1000);
-      Serial.println("Setting as a Wi-Fi Station..");
+  // Set device as a Wi-Fi Station
+  WiFi.begin(ssid, password);
+  while (WiFi.status() != WL_CONNECTED) {
+    delay(1000);
+    Serial.println("Setting as a Wi-Fi Station..");
+  }
+  Serial.print("Station IP Address: ");
+  Serial.println(WiFi.localIP());
+  Serial.println();
 
-    }
-    Serial.print("Station IP Address: ");
-    digitalWrite(red,LOW);
-    digitalWrite(green,HIGH);
-    Serial.println(WiFi.localIP());
-    Serial.println();
+  // Init BME680 sensor
+  if (!bme.begin()) {
+    Serial.println(F("Could not find a valid BME680 sensor, check wiring!"));
+    while (1);
+  }
 
-    // Handle Web Server
+  // Handle Web Server
   server.on("/", HTTP_GET, [](AsyncWebServerRequest *request){
     request->send_P(200, "text/html", index_html, processor);
   });
@@ -184,15 +206,9 @@ void setup() {
   });
   server.addHandler(&events);
   server.begin();
-
-    //////////////////////////////////////////////////////////////////////////////////////////
-
-
-    delay(10000);
 }
 
 void loop() {
-  
   //reading photoresistor values 
   TRRread = analogRead(TRR);
   TLRread = analogRead(TLR);
@@ -247,19 +263,17 @@ void loop() {
   temperature = Pval*1000;
   //Serial.println(Readval);
   //Serial.println(Vval);
-  delay(100);
-  ///website code to display solar output
-  //////////////////////////////////////////////website code/////////////////////////////////////////////
+  delay(100);  
   if ((millis() - lastTime) > timerDelay) {
-    //Serial.printf("Power = %.4f \n", temperature);
-    //Serial.println();
-   // Send Events to the Web Server with the Sensor Readings
+    Serial.printf("Temperature = %.2f ºC \n", temperature);
+    Serial.printf("Humidity = %.2f % \n", humidity);
+    Serial.println();
+
+    // Send Events to the Web Server with the Sensor Readings
     events.send("ping",NULL,millis());
     events.send(String(temperature).c_str(),"temperature",millis());
-   
+    events.send(String(humidity).c_str(),"humidity",millis());
+    
     lastTime = millis();
   }
-    //////////////////////////////////////////////////////////////////////////////////////////////////////
-    
-  
 }
