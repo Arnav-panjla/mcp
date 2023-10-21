@@ -7,20 +7,25 @@
 const char* ssid = "moto g42";
 const char* password = "12345678";
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
-Servo myservo[2];  // create servo object to control a servo (probably an array to control 2 servos) 
+Servo servoA ;
+Servo servoB;  // create servo object to control a servo (probably an array to control 2 servos) 
                 // 16 servo objects can be created on the ESP32
 
-int pos_a = 90;    // variable to store the inital Aservo position
-int pos_b = 90;    // variable to store the inital Bservo position
+int pos_b_min = 15;
+int pos_b_max = 75;
+int pos_a = 90;                         // variable to store the inital Aservo position
+int pos_b = (pos_b_min+pos_b_max)/2;    // variable to store the inital Bservo position
+
 // Recommended PWM GPIO pins on the ESP32 include 2,4,12-19,21-23,25-27,32-33 
+int red = 13;
+int green =12;
 int read_val = 34;
-int AservoPin = 12;
-int BservoPin = 13;
-int TRR = 4;
-int TLR = 2;
-int BRR = 16;
-int BLR = 14;
+int servoApin = 33;
+int servoBpin = 32;
+int TRR = 22;
+int TLR = 21;
+int BRR = 23;
+int BLR = 5;
 //tolerance factor for each photoresistor (Default value is 1)
 int TRRtf = 1;
 int TLRtf = 1;
@@ -37,7 +42,7 @@ int TLRval;
 int BRRval;
 int BLRval;
 //
-
+float Cof = (3.3/1230); // using hit and trial 
 float Vval; // variable for actual voltage reading from solar output 
 float Pval; //variable that contains power value in Watt
 int Res = 1000 ; //resistor value (3 identical will be connected) (1k??)
@@ -50,7 +55,7 @@ AsyncWebServer server(80);
 AsyncEventSource events("/events");
 
 unsigned long lastTime = 0;  
-unsigned long timerDelay = 250;  // send readings timer
+unsigned long timerDelay = 500;  // send readings timer
 
 const char index_html[] PROGMEM = R"rawliteral(
 <!DOCTYPE HTML><html>
@@ -81,7 +86,7 @@ const char index_html[] PROGMEM = R"rawliteral(
   <div class="content">
     <div class="cards">
       <div class="card temperature">
-        <h4><i style='font-size:24px' class='fas'>&#xf5ba;</i> POWER</h4><p><span class="reading"><span id="temp">%TEMPERATURE%</span> W</span></p>
+        <h4><i style='font-size:24px' class='fas'>&#xf5ba;</i> POWER</h4><p><span class="reading"><span id="temp">%POWER%</span> mW</span></p>
       </div>
     </div>
   </div>
@@ -124,18 +129,24 @@ void setup() {
     Serial.begin(115200); //begin serial monitor 
     //initialising all input output pins
     pinMode(read_val,INPUT);
-    pinMode(AservoPin,OUTPUT);
-    pinMode(BservoPin,OUTPUT);
+    pinMode(servoApin,OUTPUT);
+    pinMode(servoBpin,OUTPUT);
     pinMode(TRR,INPUT);
     pinMode(TLR,INPUT);
     pinMode(BRR,INPUT);
     pinMode(BLR,INPUT);
-    myservo[1].attach(AservoPin);
-    myservo[2].attach(BservoPin);   
+    pinMode(red,OUTPUT);
+    pinMOde(green,OUTPUT);
+    servoA.attach(servoApin);
+    servoB.attach(servoBpin);   
 
     //setting position of all servoes to 90 initially 
-    myservo[1].write(pos_a);
-    myservo[2].write(pos_b);
+    servoA.write(pos_a);
+    servoB.write(pos_b);
+
+    //turing all led off 
+    digitalWrite(red,LOW);
+    digitalWrite(green,LOW);
 
     //////////////////////////////////website code ////////////////////////////////////////////////////
       // Set the device as a Station and Soft Access Point simultaneously
@@ -144,10 +155,14 @@ void setup() {
     // Set device as a Wi-Fi Station
     WiFi.begin(ssid, password);
     while (WiFi.status() != WL_CONNECTED) {
+      digitalWrite(red,HIGH);//turning on red led
       delay(1000);
       Serial.println("Setting as a Wi-Fi Station..");
+
     }
     Serial.print("Station IP Address: ");
+    digitalWrite(red,LOW);
+    digitalWrite(green,HIGH);
     Serial.println(WiFi.localIP());
     Serial.println();
 
@@ -188,38 +203,47 @@ void loop() {
     BLRval = BLRread*BLRtf;
 
     if (( TRRval > TLRval ) or ( BRRval > BLRval )){
-        pos_a=pos_a+1;
-        myservo[1].write(pos_a);
+      if (pos_a>0){
+        pos_a=pos_a-1;
+        servoA.write(pos_a);
+      }
     }
     if (( TRRval < TLRval ) or ( BRRval < BLRval )){
-        pos_a=pos_a-1;
-        myservo[1].write(pos_a);
+      if(pos_a<180){
+        pos_a=pos_a+1;
+        servoA.write(pos_a);
+      }
+
     }
     if (( BRRval > TRRval ) or ( BLRval > TLRval )){
-        pos_a=pos_a+1;
-        myservo[2].write(pos_a);
+      if (pos_b>pos_b_min){
+        pos_b=pos_b-1;
+        servoB.write(pos_b);
+      }
+      else{}
     }
     if (( BRRval < TRRval ) or ( BLRval < TLRval )){
-        pos_a=pos_a-1;
-        myservo[2].write(pos_a);
+      if (pos_b<pos_b_max){
+        pos_b=pos_b+1;
+        servoB.write(pos_b);
+      }
+      else{}
     }
-    else{
-      
-    }
+    else{}
 
     ///reads value form solar output
     Readval = analogRead(read_val); //value range from 0-4092
-    Vval = Readval*(9.9/4092);
+    Vval = Readval*Cof;
     Pval = (Vval*Vval)/Res;
-    temperature = Pval*10;
-    Serial.println(temperature);
-    Serial.println(Vval);
+    temperature = Pval*1000;
+    Serial.println(Readval);
+    //Serial.println(Vval);
     delay(100);
     ///website code to display solar output
     //////////////////////////////////////////////website code/////////////////////////////////////////////
     if ((millis() - lastTime) > timerDelay) {
-      Serial.printf("Temperature = %.4f ºC \n", temperature);
-      Serial.println();
+      //Serial.printf("Power = %.4f \n", temperature);
+      //Serial.println();
 
     // Send Events to the Web Server with the Sensor Readings
       events.send("ping",NULL,millis());
