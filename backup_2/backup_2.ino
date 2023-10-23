@@ -27,7 +27,7 @@ int TRR = 39;//green
 int TLR = 35;//yellow
 int BRR = 36;//blue
 int BLR = 33;//orange
-int Rtol = 200;
+int Rtol = 200;//tolerance value for photo resistor
 //tolerance factor for each photoresistor (Default value is 1)
 //int TRRtf = 1;
 //int TLRtf = 1;

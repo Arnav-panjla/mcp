@@ -1,0 +1,56 @@
+<!DOCTYPE HTML><html>
+<head>
+  <title>SOLAR TRACKER</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <link rel="stylesheet" href="https://use.fontawesome.com/releases/v5.7.2/css/all.css" integrity="sha384-fnmOCqbTlWIlj8LyTjo7mOUStjsKC4pOpQbqyi7RrhN7udi9RwhKkMHpvLbHG9Sr" crossorigin="anonymous">
+  <link rel="icon" href="data:,">
+  <style>
+    html {font-family: Arial; display: inline-block; text-align: center;}
+    p {  font-size: 1.2rem;}
+    body {  margin: 0;}
+    .topnav { overflow: hidden; background-color: #4B1D3F; color: white; font-size: 1.7rem; }
+    .content { padding: 20px; }
+    .card { background-color: white; box-shadow: 2px 2px 12px 1px rgba(140,140,140,.5); }
+    .cards { max-width: 700px; margin: 0 auto; display: grid; grid-gap: 2rem; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); }
+    .reading { font-size: 2.8rem; }
+    .card.temperature { color: #0e7c7b; }
+    .card.humidity { color: #17bebb; }
+    .card.pressure { color: #3fca6b; }
+    .card.gas { color: #d62246; }
+  </style>
+</head>
+<body>
+  <div class="topnav">
+    <h3>BME680 WEB SERVER</h3>
+  </div>
+  <div class="content">
+    <div class="cards">
+      <div class="card temperature">
+        <h4><i class="fas fa-thermometer-half"></i> POWER</h4><p><span class="reading"><span id="temp">%POWER%</span> &deg;C</span></p>
+      </div>
+      <div class="card humidity">
+        <h4><i class="fas fa-tint"></i> ENERGY</h4><p><span class="reading"><span id="hum">%ENERGY%</span> &percnt;</span></p>
+      </div>
+    </div>
+  </div>
+<script>
+  var Socket;
+  function init() {
+    Socket = new WebSocket('ws://' + window.location.hostname + ':81/');
+    Socket.onmessage = function(event) {
+      processCommand(event);
+    };
+  }
+  function processCommand(event) {
+	var obj = JSON.parse(event.data);
+	document.getElementById('temp').innerHTML = obj.rand1;
+	document.getElementById('hum').innerHTML = obj.rand2;
+    console.log(obj.rand1);
+	console.log(obj.rand2);
+  }
+  window.onload = function(event) {
+    init();
+  }
+</script>
+</body>
+</html>
