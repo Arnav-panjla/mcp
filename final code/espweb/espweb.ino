@@ -6,8 +6,8 @@
 #include <ArduinoJson.h>                              // needed for JSON encapsulation (send multiple variables with one string)
 
 // SSID and password of Wifi connection:
-const char* ssid = "APANJLA";
-const char* password = "Asdf@35237";
+const char* ssid = "G42";
+const char* password = "244466666";
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 Servo servoA;  // create servo object to control a servo (probably an array to control 2 servos) 
@@ -21,9 +21,10 @@ int pos_b = (pos_b_min+pos_b_max)/2;    // variable to store the inital Bservo p
 // Recommended PWM GPIO pins on the ESP32 include 2,4,12-19,21-23,25-27,32-33 
 //That means you can't use the ADC on any of the ADC2 channels while WiFi is on: GPIO4, GPIO0, GPIO2, GPIO15, GPIO13, GPIO12, GPIO14, GPIO27, GPIO25 and GPIO26.
 //But you can use ADC1, which uses pins GPIO36(VP), GPIO37, GPIO38, GPIO39(VN), GPIO32, GPIO33, GPIO34 and GPIO35.
-int red = 23;
-int green =22;
+int red = 13;
+int green =12;
 int blue = 27;
+int toggle = 23; // tiggle pin used for switching modes
 int read_val = 34;
 int servoApin = 32;
 int servoBpin = 18;
@@ -69,65 +70,13 @@ unsigned long previousMillis = 0;                     // we use the "millis()" c
 WebServer server(80);                                 // the server uses port 80 (standard port for websites
 WebSocketsServer webSocket = WebSocketsServer(81);    // the websocket uses port 81 (standard port for websockets
 
-void setup() {
-  Serial.begin(115200);                               // init serial port for debugging
-    
-  //initialising all input output pins
-  pinMode(blue,OUTPUT);////////////////////////only this code (backup_2)
-  pinMode(read_val,INPUT);
-  pinMode(servoApin,OUTPUT);
-  pinMode(servoBpin,OUTPUT);
-  pinMode(TRR,INPUT);
-  pinMode(TLR,INPUT);
-  pinMode(BRR,INPUT);
-  pinMode(BLR,INPUT);
-  pinMode(red,OUTPUT);
-  pinMode(green,OUTPUT);
-  servoA.attach(servoApin);
-  servoB.attach(servoBpin);   
-
-  //setting position of all servoes to default value initially 
-  servoA.write(pos_a);
-  servoB.write(pos_b);
-  //turning all leds off initially
-  digitalWrite(blue,LOW);
-  digitalWrite(red,LOW);
-  digitalWrite(green,LOW);
-
-  WiFi.begin(ssid, password);                         // start WiFi interface
-  Serial.println("Establishing connection to WiFi with SSID: " + String(ssid));     // print SSID to the serial interface for debugging
- 
-  while (WiFi.status() != WL_CONNECTED) {             // wait until WiFi is connected
-    delay(1000);
-    Serial.print(".");
-    digitalWrite(red,HIGH);
-    digitalWrite(green,LOW);
-  }
-  Serial.print("Connected to network with IP address: ");
-  Serial.print(WiFi.localIP());
-  digitalWrite(red,LOW);
-  digitalWrite(green,HIGH);   
-  Serial.println("");                  // show IP address that the ESP32 has received from router
-  
-  server.on("/", []() {                               // define here wat the webserver needs to do
-    server.send(200, "text/html", webpage);           //    -> it needs to send out the HTML string "webpage" to the client
-  });
-  server.begin();                                     // start server
-  
-  webSocket.begin();                                  // start websocket
-  //webSocket.onEvent(webSocketEvent);                  // define a callback function -> what does the ESP32 need to do when an event from the websocket is received? -> run function "webSocketEvent()"
-}
-
-void loop() {
+void solar_control(){
   //reading photoresistor values 
   TRRread = analogRead(TRR);
   TLRread = analogRead(TLR);
   BRRread = analogRead(BRR);
   BLRread = analogRead(BLR);
 
-  //initialising web-server
-  server.handleClient();                              // Needed for the webserver to handle all clients
-  webSocket.loop();                                   // Update function for the webSockets 
   
   if ( TRRread > TLRread+Rtol ){
     if (pos_a>0){
@@ -161,23 +110,101 @@ void loop() {
   }
   else{}
 
+
+
+}
+
+void setup() {
+  Serial.begin(115200);                               // init serial port for debugging
+    
+  //initialising all input output pins
+  pinMode(toggle,INPUT);
+  pinMode(red,OUTPUT);
+  pinMode(green,OUTPUT);
+  pinMode(blue,OUTPUT);
+  pinMode(read_val,INPUT);
+  pinMode(servoApin,OUTPUT);
+  pinMode(servoBpin,OUTPUT);
+  pinMode(TRR,INPUT);
+  pinMode(TLR,INPUT);
+  pinMode(BRR,INPUT);
+  pinMode(BLR,INPUT);
+
+  servoA.attach(servoApin);
+  servoB.attach(servoBpin);   
+
+  //setting position of all servoes to default value initially 
+  servoA.write(pos_a);
+  servoB.write(pos_b);
+  //turning all leds off initially
+  digitalWrite(blue,LOW);
+  digitalWrite(red,LOW);
+  digitalWrite(green,LOW);
+  
+  if (digitalRead(toggle) == LOW){
+    WiFi.begin(ssid, password);                         // start WiFi interface
+    Serial.println("Establishing connection to WiFi with SSID: " + String(ssid));     // print SSID to the serial interface for debugging
+  
+    while (WiFi.status() != WL_CONNECTED) {             // wait until WiFi is connected
+      Serial.print(".");
+      digitalWrite(red,HIGH);
+      digitalWrite(green,LOW);
+      delay(1000);
+    }
+    Serial.print("Connected to network with IP address: ");
+    Serial.print(WiFi.localIP());
+    digitalWrite(red,LOW);
+    digitalWrite(green,HIGH);   
+    Serial.println("");                  // show IP address that the ESP32 has received from router
+    
+    server.on("/", []() {                               // define here wat the webserver needs to do
+      server.send(200, "text/html", webpage);           //    -> it needs to send out the HTML string "webpage" to the client
+    });
+    server.begin();                                     // start server
+    
+    webSocket.begin();                                  // start websocket
+    //webSocket.onEvent(webSocketEvent);                  // define a callback function -> what does the ESP32 need to do when an event from the websocket is received? -> run function "webSocketEvent()"
+  }
+  else{}
+}
+
+
+void loop() {
+
+  while (digitalRead(toggle) == HIGH){
+    Serial.println("in while loop");
+    digitalWrite(red,LOW);
+    digitalWrite(green,LOW);
+    digitalWrite(blue,HIGH);
+    solar_control();
+  }
+  digitalWrite(red,LOW);
+  digitalWrite(blue,LOW);
+  digitalWrite(green,HIGH);
+  Serial.print("in void loop");
+
+  solar_control();
     ///reads value form solar output
   Readval = analogRead(read_val); //value range from 0-4092
   Vval = Readval*Cof;
   Pval = (Vval*Vval)/Res;
   //delay(10);
+  //initialising web-server
+  server.handleClient();                              // Needed for the webserver to handle all clients
+  webSocket.loop();                                   // Update function for the webSockets 
+    
 
   unsigned long now = millis();                       // read out the current "time" ("millis()" gives the time in ms since the Arduino started)
   if ((unsigned long)(now - previousMillis) > interval) { // check if "interval" ms has passed since last time the clients were updated
     String jsonString = "";                           // create a JSON string for sending data to the client
     StaticJsonDocument<200> doc;                      // create a JSON container
     JsonObject object = doc.to<JsonObject>();         // create a JSON Object
-    object["rand1"] = random(10);
-    //object["rand1"] = Pval;                    // write data into the JSON object -> I used "rand1" and "rand2" here, but you can use anything else
+    //object["rand1"] = random(10);
+    object["rand1"] = (int(Pval*100000))/100;                    // write data into the JSON object -> I used "rand1" and "rand2" here, but you can use anything else
     Eval = Eval +((Pval*interval)/1000);
     object["rand2"] = Eval;
     serializeJson(doc, jsonString);                   // convert JSON object to string
-    Serial.println(jsonString);                       // print JSON string to console for debug purposes (you can comment this out)
+    //Serial.println(jsonString);                       // print JSON string to console for debug purposes (you can comment this out)
     webSocket.broadcastTXT(jsonString);               // send JSON string to clients
     previousMillis = now;                             // reset previousMillis
   }
