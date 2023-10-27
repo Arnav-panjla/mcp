@@ -190,7 +190,7 @@ void loop() {
     ///reads value form solar output
   Readval = analogRead(read_val); //value range from 0-4092
   Vval = Readval*Cof;
-  Pval = (Vval*Vval)/Res;
+  Pval = (Vval*Vval)/(3*Res);
   //delay(10);
   //initialising web-server
   server.handleClient();                              // Needed for the webserver to handle all clients
