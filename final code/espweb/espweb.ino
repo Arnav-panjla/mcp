@@ -57,7 +57,7 @@ int Res = 1000 ; //resistor value (3 identical will be connected) (1k??)
 int Readval; //value of analog read from voltage divider (solar output)
 
 // The String below "webpage" contains the complete HTML code that is sent to the client whenever someone connects to the webserver
-String webpage = "<!DOCTYPE HTML><html>\n<head>\n<title>SOLAR TRACKER</title>\n<meta name=viewport content='width=device-width, initial-scale=1'>\n<link rel=stylesheet href=https://use.fontawesome.com/releases/v5.7.2/css/all.css integrity=sha384-fnmOCqbTlWIlj8LyTjo7mOUStjsKC4pOpQbqyi7RrhN7udi9RwhKkMHpvLbHG9Sr crossorigin=anonymous>\n<link rel=icon href=data:,>\n<style>html{font-family:Arial;display:inline-block;text-align:center}p{font-size:1.2rem}body{margin:0}.topnav{overflow:hidden;background-color:#4b1d3f;color:white;font-size:1.7rem}.content{padding:20px}.card{background-color:white;box-shadow:2px 2px 12px 1px rgba(140,140,140,.5)}.cards{max-width:700px;margin:0 auto;display:grid;grid-gap:2rem;grid-template-columns:repeat(auto-fit,minmax(300px,1fr))}.reading{font-size:2.8rem}.card.temperature{color:#0e7c7b}.card.humidity{color:#17bebb}.card.pressure{color:#3fca6b}.card.gas{color:#d62246}</style>\n</head>\n<body>\n<div class=topnav>\n<h3>BME680 WEB SERVER</h3>\n</div>\n<div class=content>\n<div class=cards>\n<div class='card temperature'>\n<h4><i class='fas fa-thermometer-half'></i> POWER</h4><p><span class=reading><span id=temp>%POWER%</span> &deg;C</span></p>\n</div>\n<div class='card humidity'>\n<h4><i class='fas fa-tint'></i> ENERGY</h4><p><span class=reading><span id=hum>%ENERGY%</span> &percnt;</span></p>\n</div>\n</div>\n</div>\n<script>var Socket;function init(){Socket=new WebSocket('ws://'+window.location.hostname+':81/');Socket.onmessage=function(a){processCommand(a)}}function processCommand(a){var b=JSON.parse(a.data);document.getElementById('temp').innerHTML=b.rand1;document.getElementById('hum').innerHTML=b.rand2;console.log(b.rand1);console.log(b.rand2)}window.onload=function(a){init()};</script>\n</body>\n</html>";
+String webpage = "<!DOCTYPE HTML><html>\n<head>\n<title>SOLAR TRACKER</title>\n<meta name=viewport content='width=device-width, initial-scale=1'>\n<link rel=stylesheet href=https://use.fontawesome.com/releases/v5.7.2/css/all.css integrity=sha384-fnmOCqbTlWIlj8LyTjo7mOUStjsKC4pOpQbqyi7RrhN7udi9RwhKkMHpvLbHG9Sr crossorigin=anonymous>\n<link rel=icon href=data:,>\n<style>html{font-family:Arial;display:inline-block;text-align:center}p{font-size:1.2rem}body{margin:0}.topnav{overflow:hidden;background-color:#4b1d3f;color:white;font-size:1.7rem}.content{padding:20px}.card{background-color:white;box-shadow:2px 2px 12px 1px rgba(140,140,140,.5)}.cards{max-width:700px;margin:0 auto;display:grid;grid-gap:2rem;grid-template-columns:repeat(auto-fit,minmax(300px,1fr))}.reading{font-size:2.8rem}.card.temperature{color:#0e7c7b}.card.humidity{color:#17bebb}.card.pressure{color:#3fca6b}.card.gas{color:#d62246}</style>\n</head>\n<body>\n<div class=topnav>\n<h3>SUN TRACKING SOLAR PANEL</h3>\n</div>\n<div class=content>\n<div class=cards>\n<div class='card temperature'>\n<h4><i class='fas fa-bolt'></i> POWER</h4><p><span class=reading><span id=temp>%POWER%</span> mW</span></p>\n</div>\n<div class='card humidity'>\n<h4><i class='fas fa-battery-3'></i> ENERGY</h4><p><span class=reading><span id=hum>%ENERGY%</span> mJ</span></p>\n</div>\n</div>\n</div>\n<script>var Socket;function init(){Socket=new WebSocket('ws://'+window.location.hostname+':81/');Socket.onmessage=function(a){processCommand(a)}}function processCommand(a){var b=JSON.parse(a.data);document.getElementById('temp').innerHTML=b.rand1;document.getElementById('hum').innerHTML=b.rand2;console.log(b.rand1);console.log(b.rand2)}window.onload=function(a){init()};</script>\n</body>\n</html>";
 
 // The JSON library uses static memory, so this will need to be allocated:
 // -> in the video I used global variables for "doc_tx" and "doc_rx", however, I now changed this in the code to local variables instead "doc" -> Arduino documentation recomends to use local containers instead of global to prevent data corruption
@@ -150,6 +150,9 @@ void setup() {
       digitalWrite(red,HIGH);
       digitalWrite(green,LOW);
       delay(1000);
+      if (digitalRead(toggle)==LOW){
+        break;
+      }
     }
     Serial.print("Connected to network with IP address: ");
     Serial.print(WiFi.localIP());
@@ -201,7 +204,7 @@ void loop() {
     JsonObject object = doc.to<JsonObject>();         // create a JSON Object
     //object["rand1"] = random(10);
     object["rand1"] = (int(Pval*100000))/100;                    // write data into the JSON object -> I used "rand1" and "rand2" here, but you can use anything else
-    Eval = Eval +((Pval*interval)/1000);
+    Eval = (int((Eval +((Pval*interval)))*1000))/1000;
     object["rand2"] = Eval;
     serializeJson(doc, jsonString);                   // convert JSON object to string
     //Serial.println(jsonString);                       // print JSON string to console for debug purposes (you can comment this out)
