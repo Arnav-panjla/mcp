@@ -13,18 +13,19 @@ const char* password = "244466666";
 Servo servoA;  // create servo object to control a servo (probably an array to control 2 servos) 
 Servo servoB;                // 16 servo objects can be created on the ESP32
                 
-int pos_b_min = 25;
-int pos_b_max = 75;
+int pos_b_min = 10;
+int pos_b_max = 80;
 int pos_a = 90;                         // variable to store the inital Aservo position
 int pos_b = (pos_b_min+pos_b_max)/2;    // variable to store the inital Bservo position
 
 // Recommended PWM GPIO pins on the ESP32 include 2,4,12-19,21-23,25-27,32-33 
 //That means you can't use the ADC on any of the ADC2 channels while WiFi is on: GPIO4, GPIO0, GPIO2, GPIO15, GPIO13, GPIO12, GPIO14, GPIO27, GPIO25 and GPIO26.
 //But you can use ADC1, which uses pins GPIO36(VP), GPIO37, GPIO38, GPIO39(VN), GPIO32, GPIO33, GPIO34 and GPIO35.
+
 int red = 13;
 int green =12;
 int blue = 27;
-int toggle = 23; // tiggle pin used for switching modes
+int toggle = 23; // toggle pin used for switching modes
 int read_val = 34;
 int servoApin = 32;
 int servoBpin = 18;
@@ -50,10 +51,10 @@ int BLRread;
 //int BLRval;
 //
 float Cof = (3.3/1230); // co-factor decided using hit and trial 
-float Vval; // variable for actual voltage reading from solar output 
+double Vval; // variable for actual voltage reading from solar output 
 float Pval; //variable that contains power value in Watt
-float Eval = 0;  //energy value Pval * interval
-int Res = 1000 ; //resistor value (3 identical will be connected) (1k??)
+double Eval = 0;  //energy value Pval * interval
+int Res = 1; //resistor value on kOhm (3 identical will be connected) (1k??)
 int Readval; //value of analog read from voltage divider (solar output)
 
 // The String below "webpage" contains the complete HTML code that is sent to the client whenever someone connects to the webserver
@@ -141,41 +142,40 @@ void setup() {
   digitalWrite(red,LOW);
   digitalWrite(green,LOW);
   
-  if (digitalRead(toggle) == LOW){
-    WiFi.begin(ssid, password);                         // start WiFi interface
-    Serial.println("Establishing connection to WiFi with SSID: " + String(ssid));     // print SSID to the serial interface for debugging
+  Serial.print('in void setup');
+  WiFi.begin(ssid, password);                         // start WiFi interface
+  Serial.println("Establishing connection to WiFi with SSID: " + String(ssid));     // print SSID to the serial interface for debugging
   
-    while (WiFi.status() != WL_CONNECTED) {             // wait until WiFi is connected
-      Serial.print(".");
-      digitalWrite(red,HIGH);
-      digitalWrite(green,LOW);
-      delay(1000);
-      if (digitalRead(toggle)==LOW){
-        break;
-      }
+  while (WiFi.status() != WL_CONNECTED) {             // wait until WiFi is connected
+    Serial.print(".");
+    digitalWrite(red,HIGH);
+    digitalWrite(green,LOW);
+    delay(1000);
+    if (digitalRead(toggle)==HIGH){
+      break;
     }
-    Serial.print("Connected to network with IP address: ");
-    Serial.print(WiFi.localIP());
-    digitalWrite(red,LOW);
-    digitalWrite(green,HIGH);   
-    Serial.println("");                  // show IP address that the ESP32 has received from router
-    
-    server.on("/", []() {                               // define here wat the webserver needs to do
-      server.send(200, "text/html", webpage);           //    -> it needs to send out the HTML string "webpage" to the client
-    });
-    server.begin();                                     // start server
-    
-    webSocket.begin();                                  // start websocket
-    //webSocket.onEvent(webSocketEvent);                  // define a callback function -> what does the ESP32 need to do when an event from the websocket is received? -> run function "webSocketEvent()"
   }
-  else{}
+  Serial.print("Connected to network with IP address: ");
+  Serial.print(WiFi.localIP());
+  digitalWrite(red,LOW);
+  digitalWrite(green,HIGH);   
+  Serial.println("");                  // show IP address that the ESP32 has received from router
+  
+  server.on("/", []() {                               // define here wat the webserver needs to do
+    server.send(200, "text/html", webpage);           //    -> it needs to send out the HTML string "webpage" to the client
+  });
+  server.begin();                                     // start server
+  
+  webSocket.begin();                                  // start websocket
+  //webSocket.onEvent(webSocketEvent);                  // define a callback function -> what does the ESP32 need to do when an event from the websocket is received? -> run function "webSocketEvent()"
 }
 
 
 void loop() {
 
   while (digitalRead(toggle) == HIGH){
-    Serial.println("in while loop");
+    //Serial.println("in while loop");
+    delay(10);
     digitalWrite(red,LOW);
     digitalWrite(green,LOW);
     digitalWrite(blue,HIGH);
@@ -184,14 +184,16 @@ void loop() {
   digitalWrite(red,LOW);
   digitalWrite(blue,LOW);
   digitalWrite(green,HIGH);
-  Serial.print("in void loop");
+  //Serial.println("in void loop");
 
   solar_control();
-    ///reads value form solar output
+  ///reads value form solar output
   Readval = analogRead(read_val); //value range from 0-4092
   Vval = Readval*Cof;
-  Pval = (Vval*Vval)/(3*Res);
-  //delay(10);
+  Pval = (Vval*Vval)/(3*Res); // power is in mW as resistence is in kOhm
+  Serial.print("power value is ");
+  Serial.print(Pval);
+  Serial.println();
   //initialising web-server
   server.handleClient();                              // Needed for the webserver to handle all clients
   webSocket.loop();                                   // Update function for the webSockets 
@@ -203,11 +205,15 @@ void loop() {
     StaticJsonDocument<200> doc;                      // create a JSON container
     JsonObject object = doc.to<JsonObject>();         // create a JSON Object
     //object["rand1"] = random(10);
-    object["rand1"] = (int(Pval*100000))/100;                    // write data into the JSON object -> I used "rand1" and "rand2" here, but you can use anything else
-    Eval = (int((Eval +((Pval*interval)))*1000))/1000;
+    object["rand1"] = ((int(Pval*100))/100);                    // write data into the JSON object -> I used "rand1" and "rand2" here, but you can use anything else
+    Serial.print("Pval = ");
+    Serial.print(Pval);
+    Serial.println();
+    Eval = (int((Eval +((Pval*interval/1000)))*1000))/1000;
     object["rand2"] = Eval;
     serializeJson(doc, jsonString);                   // convert JSON object to string
-    //Serial.println(jsonString);                       // print JSON string to console for debug purposes (you can comment this out)
+    Serial.print(jsonString); // print JSON string to console for debug purposes (you can comment this out)
+    Serial.println();
     webSocket.broadcastTXT(jsonString);               // send JSON string to clients
     previousMillis = now;                             // reset previousMillis
   }
